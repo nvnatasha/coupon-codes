@@ -12,7 +12,8 @@ class CouponSerializer
                         discount_type: coupon.discount_type,
                         discount_value: coupon.discount_value,
                         status: coupon.status,
-                        merchant_id: coupon.merchant_id
+                        merchant_id: coupon.merchant_id,
+                        use_count: coupon.use_count
                     }
                 }
             end
@@ -32,7 +33,8 @@ class CouponSerializer
                     discount_type: coupon.discount_type,
                     discount_value: coupon.discount_value,
                     status: coupon.status,
-                    merchant_id: coupon.merchant_id
+                    merchant_id: coupon.merchant_id,
+                    use_count: coupon.use_count
                 }
             }
         }
