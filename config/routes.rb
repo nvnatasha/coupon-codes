@@ -7,6 +7,13 @@ Rails.application.routes.draw do
 
   # Defines the root path route ("/")
   # root "posts#index"
+
+  get '/api/v1/merchants/:merchant_id/coupons/:id', to: 'api/v1/coupons#index'
+  get '/api/v1/merchants/:merchant_id/coupons/:id', to: 'api/v1/coupons#show'
+  post '/api/v1/merchants/:merchant_id/coupons', to: 'api/v1/coupons#create'
+  patch '/api/v1/merchants/:merchant_id/coupons/:id', to: 'api/v1/coupons#update'
+  delete '/api/v1/merchants/:merchant_id/coupons/:id', to: 'api/v1/coupons#destroy'
+
   namespace :api do
     namespace :v1 do
       namespace :items do
@@ -24,9 +31,6 @@ Rails.application.routes.draw do
         resources :items, only: :index, controller: "merchants/items"
         resources :customers, only: :index, controller: "merchants/customers"
         resources :invoices, only: :index, controller: "merchants/invoices"
-      end
-
-      namespace :coupons do
       end
     end
   end

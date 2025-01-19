@@ -22,7 +22,8 @@ class CouponSerializer
 
     def self.format_coupon(coupon)
         {
-            data: {
+            data: 
+            {
                 id: coupon.id.to_s,
                 type: 'coupon',
                 attributes: {
