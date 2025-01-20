@@ -285,6 +285,28 @@ RSpec.describe "Coupons API", type: :request do
             expect(json_response[:attributes][:name]).to eq(tsCoupon.name)
         end
 
+        it 'activates a deactivated coupon' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: false,
+                merchant_id: tsStore.id
+            )
+
+            patch "/api/v1/merchants/#{tsStore.id}/coupons/#{tsCoupon.id}",
+            params: { coupon: { status: true } }
+
+            expect(response).to have_http_status(:ok)
+
+            json_response = JSON.parse(response.body, symbolize_names: true)[:data]
+
+            expect(json_response[:attributes][:status]).to eq(true)
+            expect(json_response[:attributes][:name]).to eq(tsCoupon.name)
+        end
+
         it 'returns a 404 status if the coupon does not exist' do
             tsStore = Merchant.create!(name: 'Taylor Swift Store')
 
@@ -294,6 +316,15 @@ RSpec.describe "Coupons API", type: :request do
 
             expect(response).to have_http_status(:not_found)
             expect(json_response[:error]).to eq('Coupon not found')
+        end
+
+        it "returns an error when the merchant does not exist" do
+
+            patch "/api/v1/merchants/9999/coupons/1"
+
+            expect(response).to have_http_status(:not_found)
+            json_response = JSON.parse(response.body, symbolize_names: true)
+            expect(json_response[:error]).to eq("Merchant not found")
         end
     end
 end
