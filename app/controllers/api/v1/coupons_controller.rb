@@ -4,9 +4,21 @@ rescue_from ActiveRecord::RecordInvalid, with: :unprocessable_entity
 
     def index
         merchant = Merchant.find(params[:merchant_id])
-        coupons = merchant.coupons
+
+        if params[:status].present?
+
+            params[:status] == 'true' || params[:status] == 'false'
+            status = ActiveModel::Type::Boolean.new.cast(params[:status])
+                
+            coupons = merchant.coupons.where(status: status)
+
+        else
+            coupons = merchant.coupons
+        end
+
         render json: CouponSerializer.format_coupons(coupons), status: :ok
     end
+
 
     def show
         merchant = Merchant.find(params[:merchant_id])
@@ -19,15 +31,22 @@ rescue_from ActiveRecord::RecordInvalid, with: :unprocessable_entity
         coupon = merchant.coupons.create!(coupon_params)
 
         coupon.save
-        render json: CouponSerializer.format_coupon(coupon)
+        render json: CouponSerializer.format_coupon(coupon), status: :created
     end
 
     def update
-        merchant = Mercchant.find(params[:merchant_id])
+        merchant = Merchant.find(params[:merchant_id])
         coupon = merchant.coupons.find(params[:id])
 
-        coupon.update!(coupon_params)
-        render json: CouponSerializer.format_coupon(coupon)
+        if params[:status] == false
+            coupon.activate!
+        elsif params[:status] === true
+            coupon.deactivate!
+        else
+            coupon.update!(coupon_params)
+        end
+
+        render json: CouponSerializer.format_coupon(coupon), status: :ok
     end
 
     def destroy
@@ -52,7 +71,7 @@ rescue_from ActiveRecord::RecordInvalid, with: :unprocessable_entity
     end
 
     def unprocessable_entity(error)
-        render json: { error: message }, status: :unprocessable_entity
+        render json: { error: "Code has already been taken" }, status: :unprocessable_entity
     end
 
 end
