@@ -9,6 +9,7 @@ describe Merchant, type: :model do
     it { should have_many :items }
     it { should have_many :invoices }
     it { should have_many(:customers).through(:invoices) }
+    it { should have_many :coupons }
   end
 
   describe "class methods" do
@@ -90,6 +91,121 @@ describe Merchant, type: :model do
       expect(merchant.invoices_filtered_by_status("packaged")).to eq([inv_3_packaged])
       expect(merchant.invoices_filtered_by_status("returned")).to eq([inv_5_returned])
       expect(other_merchant.invoices_filtered_by_status("packaged")).to eq([inv_4_packaged])
+    end
+  end
+  
+  describe 'merchant coupons' do
+    it 'creates a valid coupon' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create!(
+          name: '$10 off',
+          code: '10OFF',
+          discount_type: 'dollar',
+          discount_value: 10,
+          merchant_id: tsStore.id
+      )
+
+      expect(tsCoupon).to be_valid 
+    end
+
+    it 'requires a name to create a valid coupon' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create(
+        code: '10OFF',
+        discount_type: 'dollar',
+        discount_value: 10,
+        merchant_id: tsStore.id
+    )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:name]).to include("can't be blank")
+    end
+
+    it 'requires a code to create a valid coupon' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        discount_type: 'dollar',
+        discount_value: 10,
+        merchant_id: tsStore.id
+      )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:code]).to include("can't be blank")
+    end
+
+    it 'requires a discount type to create a valid coupon' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        code: '10OFF',
+        discount_value: 10,
+        merchant_id: tsStore.id
+      )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:discount_type]).to include("can't be blank")
+    end
+
+    it 'requires a discount value to create a valid coupon' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        code: '10OFF',
+        discount_type: 'dollar',
+        merchant_id: tsStore.id
+      )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:discount_value]).to include("can't be blank")
+    end
+
+    it 'requires a merchant to create a valid coupon' do
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        code: '10OFF',
+        discount_type: 'dollar',
+        discount_value: 10
+      )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:merchant]).to include("must exist")
+    end
+
+    it 'requires a unique coupon code' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      anotherStore = Merchant.create(name: 'Another Swiftie Store')
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        code: '10OFF',
+        discount_type: 'dollar',
+        discount_value: 10,
+        merchant_id: tsStore.id
+      )
+      anotherCoupon = Coupon.create(
+        name: 'Holiday Sale',
+        code: '10OFF',
+        discount_type: 'dollar',
+        discount_value: 10,
+        merchant_id: anotherStore.id
+      )
+
+      expect(anotherCoupon).to be_invalid
+      expect(anotherCoupon.errors[:code]).to include("has already been taken")
+    end
+
+    it 'requires a discount value greater than zero' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        code: '10OFF',
+        discount_type: 'dollar',
+        discount_value: -10,
+        merchant_id: tsStore.id
+      )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:discount_value]).to include("must be greater than 0")
     end
   end
 end
