@@ -197,5 +197,59 @@ RSpec.describe Coupon, type: :model do
 
             expect(erasCoupon.errors[:base]).to include("Merchant cannot have more than 5 active coupons")
         end
+
+        it 'deactivates the coupon and returns the updated coupon' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: true,
+                merchant_id: tsStore.id
+            )
+
+            tsCoupon.deactivate!
+
+            expect(tsCoupon.status).to eq(false)
+        end
+
+        it 'activates a deactivated coupon' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: false,
+                merchant_id: tsStore.id
+            )
+
+            tsCoupon.activate!
+
+            expect(tsCoupon.status).to eq(true)
+        end
+
+        it 'returns a use count of a coupon' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: true,
+                merchant_id: tsStore.id
+            )
+            chrissy = Customer.create!(first_name: "Chrissy", last_name: "Karrmann")
+            
+            3.times { Invoice.create!(
+                merchant_id: tsStore.id, 
+                coupon: tsCoupon, 
+                status: 'shipped', 
+                customer: chrissy) 
+            }
+
+            expect(tsCoupon.use_count).to eq(3)
+        end
     end
 end

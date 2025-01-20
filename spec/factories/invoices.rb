@@ -1,7 +1,8 @@
 FactoryBot.define do
   factory :invoice do
     status { "shipped" }
-    customer
-    merchant
+    association :customer
+    association :merchant
+    association :coupon
   end
 end
