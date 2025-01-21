@@ -151,6 +151,115 @@ RSpec.describe "Coupons API", type: :request do
             expect(json_response[:data]).to be_empty
         end
 
+        it 'returns coupons when there is no status parameter' do 
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: true,
+                merchant_id: tsStore.id
+            )
+            ttpdCoupon = Coupon.create!(
+                name: "$10 off",
+                code: "10OFF",
+                discount_type: "dollar",
+                discount_value: 10,
+                status: false,
+                merchant_id: tsStore.id
+            )
+            repCoupon = Coupon.create!(
+                name: "$20 off",
+                code: "20OFF",
+                discount_type: "dollar",
+                discount_value: 20,
+                status: true,
+                merchant_id: tsStore.id
+            )
+
+        get "/api/v1/merchants/#{tsStore.id}/coupons"
+
+        json_response = JSON.parse(response.body, symbolize_names: true)[:data]
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response.count).to eq(3)
+        expect(json_response.map { |coupon| coupon[:attributes][:name] }).to include('50Percent', '$10 off', '$20 off')
+        end
+
+        it 'returns coupons that are active when status parameter is true' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: true,
+                merchant_id: tsStore.id
+            )
+            ttpdCoupon = Coupon.create!(
+                name: "$10 off",
+                code: "10OFF",
+                discount_type: "dollar",
+                discount_value: 10,
+                status: false,
+                merchant_id: tsStore.id
+            )
+            repCoupon = Coupon.create!(
+                name: "$20 off",
+                code: "20OFF",
+                discount_type: "dollar",
+                discount_value: 20,
+                status: true,
+                merchant_id: tsStore.id
+            )
+
+            get "/api/v1/merchants/#{tsStore.id}/coupons", params: { status: 'true' }
+
+            json_response = JSON.parse(response.body, symbolize_names: true)[:data]
+
+            expect(response).to have_http_status(:ok)
+            expect(json_response.count).to eq(2)
+            expect(json_response.map { |coupon| coupon[:attributes][:name] }).to include('50Percent', '$20 off')          
+        end
+
+        it 'returns coupons that are inactive when status parameter is false' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: true,
+                merchant_id: tsStore.id
+            )
+            ttpdCoupon = Coupon.create!(
+                name: "$10 off",
+                code: "10OFF",
+                discount_type: "dollar",
+                discount_value: 10,
+                status: false,
+                merchant_id: tsStore.id
+            )
+            repCoupon = Coupon.create!(
+                name: "$20 off",
+                code: "20OFF",
+                discount_type: "dollar",
+                discount_value: 20,
+                status: true,
+                merchant_id: tsStore.id
+            )
+
+            get "/api/v1/merchants/#{tsStore.id}/coupons", params: { status: 'false' }
+
+            json_response = JSON.parse(response.body, symbolize_names: true)[:data]
+
+            expect(response).to have_http_status(:ok)
+            expect(json_response.count).to eq(1)
+            expect(json_response.map { |coupon| coupon[:attributes][:name] }).to include('$10 off')          
+        end
+
+
         it 'returns a 404 status if the merchant ID is invalid' do
             tsStore = Merchant.create!(name: 'Taylor Swift Store')
             tsCoupon = Coupon.create!(
@@ -275,7 +384,7 @@ RSpec.describe "Coupons API", type: :request do
             )
 
             patch "/api/v1/merchants/#{tsStore.id}/coupons/#{tsCoupon.id}",
-            params: { coupon: { status: false } }
+            params: { status: false } 
 
             json_response = JSON.parse(response.body, symbolize_names: true)[:data]
 
@@ -297,14 +406,105 @@ RSpec.describe "Coupons API", type: :request do
             )
 
             patch "/api/v1/merchants/#{tsStore.id}/coupons/#{tsCoupon.id}",
-            params: { coupon: { status: true } }
+            params:  { status: true } 
 
             expect(response).to have_http_status(:ok)
 
             json_response = JSON.parse(response.body, symbolize_names: true)[:data]
-
             expect(json_response[:attributes][:status]).to eq(true)
             expect(json_response[:attributes][:name]).to eq(tsCoupon.name)
+        end
+
+        it 'activates a deactivated coupon' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: false,
+                merchant_id: tsStore.id
+            )
+
+            patch "/api/v1/merchants/#{tsStore.id}/coupons/#{tsCoupon.id}",
+            params: { status: true } 
+
+            tsCoupon.activate!
+            tsCoupon.reload
+
+            json_response = JSON.parse(response.body, symbolize_names: true)
+
+            expect(response).to have_http_status(:success)
+            expect(tsCoupon.status).to be(true)
+        end
+
+        it 'deactivates an active coupon' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: true,
+                merchant_id: tsStore.id
+            )
+
+            patch "/api/v1/merchants/#{tsStore.id}/coupons/#{tsCoupon.id}",
+            params: { status: false } 
+
+            tsCoupon.deactivate!
+            tsCoupon.reload
+
+            json_response = JSON.parse(response.body, symbolize_names: true)
+
+            expect(response).to have_http_status(:success)
+            expect(tsCoupon.status).to be(false)
+        end
+
+        it 'give returns an error if you try to deactivate an inactive coupon' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: false,
+                merchant_id: tsStore.id
+            )
+
+            patch "/api/v1/merchants/#{tsStore.id}/coupons/#{tsCoupon.id}",
+            params: { status: false }
+            
+            tsCoupon.deactivate!
+            tsCoupon.reload
+            json_response = JSON.parse(response.body, symbolize_names: true)
+
+            expect(response).to have_http_status(:bad_request)
+            expect(json_response[:error]).to eq('Coupon is already inactive')
+            expect(tsCoupon.status).to be false
+        end
+
+        it 'give returns an error if you try to activate an active coupon' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: "50Percent",
+                code: "50PERCENT",
+                discount_type: "percent",
+                discount_value: 50,
+                status: true,
+                merchant_id: tsStore.id
+            )
+
+            patch "/api/v1/merchants/#{tsStore.id}/coupons/#{tsCoupon.id}",
+            params: { status: true }
+            
+            tsCoupon.activate!
+            tsCoupon.reload
+            json_response = JSON.parse(response.body, symbolize_names: true)
+
+            expect(response).to have_http_status(:bad_request)
+            expect(json_response[:error]).to eq('Coupon is already active')
+            expect(tsCoupon.status).to be true
         end
 
         it 'returns a 404 status if the coupon does not exist' do

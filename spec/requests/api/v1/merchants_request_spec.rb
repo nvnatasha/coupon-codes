@@ -8,7 +8,7 @@ describe "Merchant endpoints", :type => :request do
       json = JSON.parse(response.body, symbolize_names: true)
 
       expect(response).to have_http_status(:ok)
-      expect(json[:data]).to be_a Array
+      expect(json[:data]).to be_a(Array)
       expect(json[:data].count).to eq(5)
       expect(json[:data].first).to include(:id, :type, :attributes)
       expect(json[:data].first[:attributes]).to include(:name)
@@ -41,18 +41,18 @@ describe "Merchant endpoints", :type => :request do
       customer = Customer.create!(first_name: "John", last_name: "Doe")
       merchant1 = Merchant.create!(name: "Merchant1")
       merchant2 = Merchant.create!(name: "Merchant2")
-      Invoice.create!(status: "returned", customer_id: customer.id, merchant_id: merchant1.id)
+      Invoice.create!(status: "returned", customer_id: customer.id, merchant_id: merchant1.id, coupon_id: nil)
       # The below factory_bot method will create 3 invoices
-      create_list(:invoice, 3, status: "shipped", customer_id: customer.id, merchant_id: merchant1.id)
-      Invoice.create!(status: "packaged", customer_id: customer.id, merchant_id: merchant2.id)
-      Invoice.create!(status: "shipped", customer_id: customer.id, merchant_id: merchant2.id)
+      create_list(:invoice, 3, status: "shipped", customer_id: customer.id, merchant_id: merchant1.id, coupon_id: nil)
+      Invoice.create!(status: "packaged", customer_id: customer.id, merchant_id: merchant2.id, coupon_id: nil)
+      Invoice.create!(status: "shipped", customer_id: customer.id, merchant_id: merchant2.id, coupon_id: nil)
 
       get "/api/v1/merchants?status=returned"
       json = JSON.parse(response.body, symbolize_names: true)
 
       expect(response).to have_http_status(:ok)
       expect(json[:data].count).to eq(1)
-      expect(json[:data][0][:id]).to eq(merchant1.id.to_s)
+      expect(json[:data][0][:id]).to eq(merchant1.id)
     end
 
     it "should return an item_count attribute when the param is present" do
@@ -193,13 +193,12 @@ describe "Merchant endpoints", :type => :request do
     it "should successfully delete merchant and use cascading deletes if merchant has child records" do
       merchant = create(:merchant)
       customer = create(:customer)
-      invoices = create_list(:invoice, 5, merchant_id: merchant.id, customer_id: customer.id)
+      invoices = create_list(:invoice, 5, merchant_id: merchant.id, customer_id: customer.id, coupon_id: nil)
       items = create_list(:item, 5, merchant_id: merchant.id)
       InvoiceItem.create!(invoice: invoices[0], item: items[0], quantity: 5, unit_price: 100)
       delete "/api/v1/merchants/#{merchant.id}"
       
       expect(response).to have_http_status(:no_content)
     end
-
   end
 end

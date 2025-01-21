@@ -9,9 +9,10 @@ rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
   private
 
   def invoice_params
-    params.require(:invoice.permit(:status, :merchant_id, :customer_id)
+    params.require(:invoice).permit(:status, :merchant_id, :customer_id)
+  end
 
-  def record_not_found
-    render json: { error.message }, status: :not_found
+  def record_not_found(error)
+    render json: { error: error.message }, status: :record_not_found
   end
 end

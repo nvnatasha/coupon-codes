@@ -7,10 +7,10 @@ RSpec.describe "Merchant customers endpoints" do
     customer2 = create(:customer)
     customer3 = create(:customer)
     merchant2 = create(:merchant)
-    create_list(:invoice, 3, merchant_id: merchant1.id, customer_id: customer1.id)
-    create_list(:invoice, 2, merchant_id: merchant1.id, customer_id: customer2.id)
+    create_list(:invoice, 3, merchant_id: merchant1.id, customer_id: customer1.id, coupon_id: nil)
+    create_list(:invoice, 2, merchant_id: merchant1.id, customer_id: customer2.id, coupon_id: nil)
     
-    create_list(:invoice, 2, merchant_id: merchant2.id, customer_id: customer3.id)
+    create_list(:invoice, 2, merchant_id: merchant2.id, customer_id: customer3.id, coupon_id: nil)
 
     get "/api/v1/merchants/#{merchant1.id}/customers"
 

@@ -43,4 +43,20 @@ class Merchant < ApplicationRecord
   def self.find_one_merchant_by_name(name)
     Merchant.find_all_by_name(name).order("LOWER(name)").first
   end
+
+  def coupons_filtered_by_status(status = nil)
+    if status == 'active'
+      coupons.where(status: true)
+    else status == 'inactive'
+      coupons.where(status: false)
+    end
+  end
+
+  def coupons_count
+    coupons.count
+  end
+
+  def invoice_coupon_count
+    invoices.where.not(coupon_id: nil).count
+  end
 end
