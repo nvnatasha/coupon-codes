@@ -1,11 +1,18 @@
 class Api::V1::Merchants::InvoicesController < ApplicationController
+rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
+
   def index
-    merchant = Merchant.find(params[:merchant_id])
-    if params[:status].present?
-      invoices = merchant.invoices_filtered_by_status(params[:status])
-    else
-      invoices = merchant.invoices
-    end
+    invoices = Invoice.filter(params)
     render json: InvoiceSerializer.new(invoices)
+  end
+
+  private
+
+  def invoice_params
+    params.require(:invoice).permit(:status, :merchant_id, :customer_id)
+  end
+
+  def record_not_found(error)
+    render json: { error: error.message }, status: :record_not_found
   end
 end

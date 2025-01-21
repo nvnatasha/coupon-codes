@@ -9,6 +9,7 @@ describe Merchant, type: :model do
     it { should have_many :items }
     it { should have_many :invoices }
     it { should have_many(:customers).through(:invoices) }
+    it { should have_many :coupons }
   end
 
   describe "class methods" do
@@ -24,10 +25,10 @@ describe Merchant, type: :model do
       merchant1 = create(:merchant)
       merchant2 = create(:merchant)
       customer = create(:customer)
-      create(:invoice, status: "returned", merchant_id: merchant1.id, customer_id: customer.id)
-      create_list(:invoice, 5, merchant_id: merchant1.id, customer_id: customer.id)
-      create_list(:invoice, 5, merchant_id: merchant2.id, customer_id: customer.id)
-      create(:invoice, status: "packaged", merchant_id: merchant2.id, customer_id: customer.id)
+      create(:invoice, status: "returned", merchant_id: merchant1.id, customer_id: customer.id, coupon_id: nil)
+      create_list(:invoice, 5, merchant_id: merchant1.id, customer_id: customer.id, coupon_id: nil)
+      create_list(:invoice, 5, merchant_id: merchant2.id, customer_id: customer.id, coupon_id: nil)
+      create(:invoice, status: "packaged", merchant_id: merchant2.id, customer_id: customer.id, coupon_id: nil)
 
       expect(Merchant.filter_by_status("returned")).to eq([merchant1])
       expect(Merchant.filter_by_status("packaged")).to eq([merchant2])
@@ -67,10 +68,10 @@ describe Merchant, type: :model do
 
       merchant2 = create(:merchant)
 
-      create_list(:invoice, 3, merchant_id: merchant1.id, customer_id: customer1.id)
-      create_list(:invoice, 2, merchant_id: merchant1.id, customer_id: customer2.id)
+      create_list(:invoice, 3, merchant_id: merchant1.id, customer_id: customer1.id, coupon_id: nil)
+      create_list(:invoice, 2, merchant_id: merchant1.id, customer_id: customer2.id, coupon_id: nil)
 
-      create_list(:invoice, 2, merchant_id: merchant2.id, customer_id: customer3.id)
+      create_list(:invoice, 2, merchant_id: merchant2.id, customer_id: customer3.id, coupon_id: nil)
 
       expect(merchant1.distinct_customers).to match_array([customer1, customer2])
       expect(merchant2.distinct_customers).to eq([customer3])
@@ -90,6 +91,250 @@ describe Merchant, type: :model do
       expect(merchant.invoices_filtered_by_status("packaged")).to eq([inv_3_packaged])
       expect(merchant.invoices_filtered_by_status("returned")).to eq([inv_5_returned])
       expect(other_merchant.invoices_filtered_by_status("packaged")).to eq([inv_4_packaged])
+    end
+  end
+  
+  describe 'merchant coupons' do
+    it 'creates a valid coupon' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create!(
+          name: '$10 off',
+          code: '10OFF',
+          discount_type: 'dollar',
+          discount_value: 10,
+          merchant_id: tsStore.id
+      )
+
+      expect(tsCoupon).to be_valid 
+    end
+
+    it 'requires a name to create a valid coupon' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create(
+        code: '10OFF',
+        discount_type: 'dollar',
+        discount_value: 10,
+        merchant_id: tsStore.id
+    )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:name]).to include("can't be blank")
+    end
+
+    it 'requires a code to create a valid coupon' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        discount_type: 'dollar',
+        discount_value: 10,
+        merchant_id: tsStore.id
+      )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:code]).to include("can't be blank")
+    end
+
+    it 'requires a discount type to create a valid coupon' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        code: '10OFF',
+        discount_value: 10,
+        merchant_id: tsStore.id
+      )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:discount_type]).to include("can't be blank")
+    end
+
+    it 'requires a discount value to create a valid coupon' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        code: '10OFF',
+        discount_type: 'dollar',
+        merchant_id: tsStore.id
+      )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:discount_value]).to include("can't be blank")
+    end
+
+    it 'requires a merchant to create a valid coupon' do
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        code: '10OFF',
+        discount_type: 'dollar',
+        discount_value: 10
+      )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:merchant]).to include("must exist")
+    end
+
+    it 'requires a unique coupon code' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      anotherStore = Merchant.create(name: 'Another Swiftie Store')
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        code: '10OFF',
+        discount_type: 'dollar',
+        discount_value: 10,
+        merchant_id: tsStore.id
+      )
+      anotherCoupon = Coupon.create(
+        name: 'Holiday Sale',
+        code: '10OFF',
+        discount_type: 'dollar',
+        discount_value: 10,
+        merchant_id: anotherStore.id
+      )
+
+      expect(anotherCoupon).to be_invalid
+      expect(anotherCoupon.errors[:code]).to include("has already been taken")
+    end
+
+    it 'requires a discount value greater than zero' do
+      tsStore = Merchant.create!(name: "Taylor Swift Store")
+      tsCoupon = Coupon.create(
+        name: '$10 off',
+        code: '10OFF',
+        discount_type: 'dollar',
+        discount_value: -10,
+        merchant_id: tsStore.id
+      )
+
+      expect(tsCoupon).to be_invalid
+      expect(tsCoupon.errors[:discount_value]).to include("must be greater than 0")
+    end
+
+    it 'returns a coupon count' do
+      tsStore = Merchant.create!(name: 'Taylor Swift Store')
+      tsCoupon = Coupon.create!(
+          name: "50Percent",
+          code: "50PERCENT",
+          discount_type: "percent",
+          discount_value: 50,
+          status: true,
+          merchant_id: tsStore.id
+      )
+      ttpdCoupon = Coupon.create!(
+          name: "$10 off",
+          code: "10OFF",
+          discount_type: "dollar",
+          discount_value: 10,
+          status: false,
+          merchant_id: tsStore.id
+      )
+      repCoupon = Coupon.create!(
+          name: "$20 off",
+          code: "20OFF",
+          discount_type: "dollar",
+          discount_value: 20,
+          status: true,
+          merchant_id: tsStore.id
+      )
+
+      count = tsStore.coupons_count
+
+      expect(count).to eq(3)
+    end
+  end
+
+    it 'returns the an invoice coupon count' do
+      tsStore = Merchant.create!(name: 'Taylor Swift Store')
+      tsCoupon = Coupon.create!(
+          name: "50Percent",
+          code: "50PERCENT",
+          discount_type: "percent",
+          discount_value: 50,
+          status: true,
+          merchant_id: tsStore.id
+      )
+
+      chrissy = Customer.create!(
+        first_name: 'Chrissy',
+        last_name: 'Karrmann'
+      )
+      invoice = Invoice.create(
+        customer_id: chrissy.id,
+        coupon_id: tsCoupon.id,
+        status: 'shipped'
+      )
+      Invoice.create!(merchant_id: tsStore.id, customer_id: chrissy.id, status: 'shipped', coupon_id: tsCoupon.id) 
+      Invoice.create!(merchant_id: tsStore.id, customer_id: chrissy.id, status: 'shipped', coupon_id: tsCoupon.id) 
+      Invoice.create!(merchant_id: tsStore.id, customer_id: chrissy.id, status: 'shipped', coupon_id: nil)      
+
+    
+      result = tsStore.invoice_coupon_count
+
+      expect(result).to eq(2)
+  end
+
+  describe 'coupons filtered by status' do
+    it 'returns coupons filtered by status(active)' do
+      tsStore = Merchant.create!(name: 'Taylor Swift Store')
+      tsCoupon = Coupon.create!(
+          name: "50Percent",
+          code: "50PERCENT",
+          discount_type: "percent",
+          discount_value: 50,
+          status: true,
+          merchant_id: tsStore.id
+      )
+      ttpdCoupon = Coupon.create!(
+          name: "$10 off",
+          code: "10OFF",
+          discount_type: "dollar",
+          discount_value: 10,
+          status: false,
+          merchant_id: tsStore.id
+      )
+      repCoupon = Coupon.create!(
+          name: "$20 off",
+          code: "20OFF",
+          discount_type: "dollar",
+          discount_value: 20,
+          status: true,
+          merchant_id: tsStore.id
+      )
+
+      result = tsStore.coupons_filtered_by_status('active')
+
+      expect(result).to include(tsCoupon)
+      expect(result).to include(repCoupon)
+    end
+
+    it 'returns coupons filtered by status(inactive)' do
+      tsStore = Merchant.create!(name: 'Taylor Swift Store') 
+      sCoupon = Coupon.create!(
+          name: "50Percent",
+          code: "50PERCENT",
+          discount_type: "percent",
+          discount_value: 50,
+          status: true,
+          merchant_id: tsStore.id
+      )
+      ttpdCoupon = Coupon.create!(
+          name: "$10 off",
+          code: "10OFF",
+          discount_type: "dollar",
+          discount_value: 10,
+          status: false,
+          merchant_id: tsStore.id
+      )
+      repCoupon = Coupon.create!(
+          name: "$20 off",
+          code: "20OFF",
+          discount_type: "dollar",
+          discount_value: 20,
+          status: true,
+          merchant_id: tsStore.id
+      )
+
+      result = tsStore.coupons_filtered_by_status('inactive')
+
+      expect(result).to include(ttpdCoupon)
     end
   end
 end
