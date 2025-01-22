@@ -30,8 +30,12 @@ rescue_from ActiveRecord::RecordInvalid, with: :unprocessable_entity
         merchant = Merchant.find(params[:merchant_id])
         coupon = merchant.coupons.create!(coupon_params)
 
-        coupon.save
-        render json: CouponSerializer.format_coupon(coupon), status: :created
+        if coupon.active_coupon_limit
+            render json: { error: "Code has already been taken" }, status: :unprocessable_entity
+        else
+            coupon.save
+            render json: CouponSerializer.format_coupon(coupon), status: :created
+        end
     end
 
 
