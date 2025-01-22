@@ -526,5 +526,31 @@ RSpec.describe "Coupons API", type: :request do
             json_response = JSON.parse(response.body, symbolize_names: true)
             expect(json_response[:error]).to eq("Merchant not found")
         end
+
+        it 'returns an error if an invoice is still pending' do
+            tsStore = Merchant.create!(name: 'Taylor Swift Store')
+            tsCoupon = Coupon.create!(
+                name: '$10 Off',
+                code: '10OFF',
+                discount_value: 10,
+                discount_type: 'dollar',
+                status: true,
+                merchant_id: tsStore.id
+            )
+            chrissy = Customer.create!(first_name: "Chrissy", last_name: "Karrmann")
+
+            pending_invoice = Invoice.create!(
+                merchant_id: tsStore.id,
+                coupon_id: tsCoupon.id,
+                status: 'packaged',
+                customer_id: chrissy.id
+            )
+
+            patch "/api/v1/merchants/#{tsStore.id}/coupons/#{tsCoupon.id}"
+            json_response = JSON.parse(response.body, symbolize_names: true)
+            
+            expect(response).to have_http_status(:unprocessable_entity)
+            expect(json_response[:error]).to eq('Cannot deactivate coupon with pending invoices')
+        end
     end
 end

@@ -40,6 +40,11 @@ rescue_from ActiveRecord::RecordInvalid, with: :unprocessable_entity
         merchant = Merchant.find(params[:merchant_id])
         coupon = merchant.coupons.find(params[:id])
         status = ActiveModel::Type::Boolean.new.cast(params[:status]) 
+
+        if coupon.invoices.where(status: 'packaged').exists?
+            render json: { error: 'Cannot deactivate coupon with pending invoices' }, status: :unprocessable_entity
+            return
+        end
     
         if status
             if coupon.status
